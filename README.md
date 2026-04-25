@@ -1,6 +1,11 @@
-# 🇧🇷 Brazilian E-Commerce — End-to-End GCP Data Pipeline
+# 🇧🇷 Brazilian E-Commerce — GCP End-to-End Data Pipeline
 
-> **Production-grade data pipeline** built on Google Cloud Platform, processing 99,000+ orders across 8 relational datasets from Brazil's largest e-commerce marketplace (Olist).
+[![dbt CI](https://github.com/YOUR_USERNAME/gcp-brazilian-ecommerce-pipeline/actions/workflows/dbt_ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/gcp-brazilian-ecommerce-pipeline/actions)
+[![Terraform](https://github.com/YOUR_USERNAME/gcp-brazilian-ecommerce-pipeline/actions/workflows/terraform_plan.yml/badge.svg)](https://github.com/YOUR_USERNAME/gcp-brazilian-ecommerce-pipeline/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+> **End-to-end production-grade data pipeline on Google Cloud Platform**  
+> Ingests 1.5M+ rows across 8 relational tables from Brazil's largest e-commerce marketplace (Olist), transforms via Apache Beam / Dataflow, models with dbt, orchestrates with Apache Airflow on Cloud Composer, and surfaces insights through a live Looker Studio dashboard.
 
 ---
 
@@ -8,148 +13,196 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        SOURCE DATA (9 CSV files)                    │
-│          Olist Brazilian E-Commerce Dataset — ~1.5M rows            │
-└──────────────────────────────┬──────────────────────────────────────┘
-                               │ gsutil cp / upload
-                               ▼
+│                        SOURCE LAYER                                 │
+│   9 CSV files · 99k+ orders · 8 relational tables · 1.5M+ rows     │
+└───────────────────────────┬─────────────────────────────────────────┘
+                            │ gsutil cp / gcloud storage
+                            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│               GOOGLE CLOUD STORAGE (GCS)                            │
-│   gs://[project]-raw/        gs://[project]-staging/               │
-│   └── olist_orders.csv       └── transformed parquet files         │
-│   └── olist_customers.csv                                           │
-│   └── ... (9 files)          gs://[project]-processed/             │
-└──────────────────────────────┬──────────────────────────────────────┘
-                               │ Pub/Sub event trigger
-                               ▼
+│                    CLOUD STORAGE (GCS)                              │
+│   gs://[project]-raw/      → source CSVs (immutable)               │
+│   gs://[project]-staging/  → Dataflow intermediate output           │
+│   gs://[project]-processed/→ archived after load                   │
+└──────────────┬──────────────────────────────┬───────────────────────┘
+               │ GCS notification             │ bq load (Day 2)
+               ▼                              ▼
+┌──────────────────────┐      ┌───────────────────────────────────────┐
+│    CLOUD PUB/SUB     │      │         BIGQUERY — RAW LAYER          │
+│  Topic: new-file     │      │   dataset: raw                        │
+│  Subscription:       │      │   8 tables · typed schemas            │
+│  dataflow-trigger    │      │   partitioned + clustered             │
+└──────────┬───────────┘      └───────────────────────────────────────┘
+           │ trigger                        ▲
+           ▼                               │ write
+┌─────────────────────────────────────────┐│
+│    DATAFLOW (Apache Beam Python SDK)    ││
+│                                         ││
+│  ┌──────────┐  ┌──────────┐  ┌───────┐ ││
+│  │ Read GCS │→ │Transform │→ │ Write ├─┘│
+│  └──────────┘  │ & Enrich │  │  BQ   │  │
+│                └──────────┘  └───────┘  │
+│  · Null handling & type casting         │
+│  · Delivery delay computation           │
+│  · Price enrichment & join              │
+│  · Category translation (EN)            │
+└─────────────────────────────────────────┘
+                            │ models read from staging.*
+                            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│               CLOUD PUB/SUB (Event Trigger)                         │
-│   Topic: new-file-uploaded                                          │
-│   Subscription: dataflow-trigger-sub                                │
-└──────────────────────────────┬──────────────────────────────────────┘
-                               │ Apache Beam pipeline
-                               ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│               GOOGLE CLOUD DATAFLOW                                 │
-│   Apache Beam Python SDK                                            │
-│   • Null handling & type casting                                    │
-│   • Multi-table joins (order_id, product_id, seller_id)            │
-│   • Delivery delay computation                                      │
-│   • Category name translation (PT → EN)                            │
-│   • Geo enrichment from zip_code_prefix                            │
-└──────────────────────────────┬──────────────────────────────────────┘
-                               │ Write to BigQuery
-                               ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│               GOOGLE BIGQUERY (3-Layer Warehouse)                   │
+│                   dbt — STAGING + MART LAYER                        │
 │                                                                     │
-│   raw.*          staging.*         mart.*                           │
-│   ─────────      ───────────       ──────────                      │
-│   raw loads  →   Beam output  →    dbt models                      │
-│   typed CSV      cleaned rows      business KPIs                   │
-│                                                                     │
-│   Partitioned: order_purchase_timestamp                             │
-│   Clustered: customer_state, product_category                      │
+│  staging.*          →      mart.*                                   │
+│  stg_orders              mart_order_kpis                            │
+│  stg_customers           mart_seller_performance                    │
+│  stg_payments            mart_customer_ltv                          │
+│  stg_order_items         mart_delivery_performance                  │
+│  stg_reviews             mart_geo_sales                             │
+│  stg_products                                                       │
+│  stg_sellers                                                        │
 └──────────────────────────────┬──────────────────────────────────────┘
-                               │ dbt transformation
+                               │ connects to mart.*
                                ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│               DBT CLOUD (Data Modelling)                            │
-│   staging models → mart models → documented & tested               │
-│   mart_order_kpis | mart_seller_performance                        │
-│   mart_customer_ltv | mart_geo_sales | mart_delivery               │
-└──────────────────────────────┬──────────────────────────────────────┘
-                               │ BI Engine connection
-                               ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│               LOOKER STUDIO (Dashboard)                             │
-│   4 report pages: Order Trends | Seller KPIs | Geo Map | Reviews   │
+│                    LOOKER STUDIO DASHBOARD                          │
+│   BI Engine accelerated · 4 report pages · live refresh             │
 └─────────────────────────────────────────────────────────────────────┘
 
-                    ↕  Orchestrated by  ↕
-┌─────────────────────────────────────────────────────────────────────┐
-│   CLOUD COMPOSER 2 (Apache Airflow 2)                               │
-│   DAG: gcs_sensor → dataflow_job → dbt_run → notify                │
-└─────────────────────────────────────────────────────────────────────┘
-
-                    ↕  Provisioned by  ↕
-┌─────────────────────────────────────────────────────────────────────┐
-│   TERRAFORM + GITHUB ACTIONS (IaC & CI/CD)                         │
-│   terraform apply  |  dbt test on PR  |  lint on push              │
-└─────────────────────────────────────────────────────────────────────┘
+        ALL ABOVE ORCHESTRATED BY CLOUD COMPOSER (Apache Airflow 2)
+        ALL INFRASTRUCTURE PROVISIONED BY TERRAFORM
+        ALL DEPLOYMENTS AUTOMATED BY GITHUB ACTIONS CI/CD
 ```
 
 ---
 
-## 📁 Repository Structure
+## 🗂️ Repository Structure
 
 ```
-gcp-brazilian-pipeline/
+gcp-brazilian-ecommerce-pipeline/
 │
 ├── README.md                          ← You are here
-├── docs/
-│   ├── DAY1_PROCESS.md               ← Day 1 detailed process log
-│   ├── DAY2_PROCESS.md               ← Day 2 detailed process log
-│   ├── ... (one per day)
-│   ├── ALL_COMMANDS.md               ← Every command used in the project
-│   └── DATA_SCHEMA.md                ← Full schema documentation
+├── COMMANDS.md                        ← Every CLI command used in this project
+├── PROCESS_LOG.md                     ← Day-by-day build journal
+├── LICENSE
 │
-├── src/
-│   ├── beam/                         ← Apache Beam / Dataflow pipelines
-│   │   ├── pipeline.py
-│   │   └── transforms/
-│   ├── dbt/                          ← dbt models (staging + mart)
-│   │   ├── models/
-│   │   ├── tests/
-│   │   └── dbt_project.yml
-│   ├── airflow/                      ← Cloud Composer DAGs
-│   │   └── dags/
-│   └── terraform/                   ← Infrastructure as Code
-│       ├── main.tf
+├── docs/
+│   ├── architecture.md                ← Detailed architecture decisions
+│   ├── data_dictionary.md             ← All tables, columns, types, descriptions
+│   ├── kpi_definitions.md             ← 5 KPIs: business question + SQL
+│   └── setup_guide.md                 ← Step-by-step GCP setup for new devs
+│
+├── infrastructure/
+│   └── terraform/
+│       ├── main.tf                    ← GCS buckets, BQ datasets, Composer env
 │       ├── variables.tf
-│       └── outputs.tf
+│       ├── outputs.tf
+│       └── terraform.tfvars.example
+│
+├── ingestion/
+│   ├── upload_to_gcs.sh               ← Shell script to upload CSVs to GCS
+│   └── bq_schemas/                    ← JSON schema files for all 8 BQ tables
+│       ├── orders_schema.json
+│       ├── customers_schema.json
+│       ├── order_items_schema.json
+│       ├── payments_schema.json
+│       ├── reviews_schema.json
+│       ├── products_schema.json
+│       ├── sellers_schema.json
+│       └── geolocation_schema.json
+│
+├── transformation/
+│   ├── dataflow/
+│   │   ├── pipeline.py                ← Apache Beam pipeline (main)
+│   │   ├── transforms.py              ← Custom transform functions
+│   │   └── requirements.txt
+│   └── dbt/
+│       ├── dbt_project.yml
+│       ├── profiles.yml.example
+│       ├── packages.yml
+│       ├── models/
+│       │   ├── staging/
+│       │   │   ├── _staging.yml       ← Sources + tests
+│       │   │   ├── stg_orders.sql
+│       │   │   ├── stg_customers.sql
+│       │   │   ├── stg_order_items.sql
+│       │   │   ├── stg_payments.sql
+│       │   │   ├── stg_reviews.sql
+│       │   │   ├── stg_products.sql
+│       │   │   └── stg_sellers.sql
+│       │   └── mart/
+│       │       ├── _mart.yml          ← Mart model documentation
+│       │       ├── mart_order_kpis.sql
+│       │       ├── mart_seller_performance.sql
+│       │       ├── mart_customer_ltv.sql
+│       │       ├── mart_delivery_performance.sql
+│       │       └── mart_geo_sales.sql
+│       ├── tests/
+│       │   └── assert_positive_prices.sql
+│       └── macros/
+│           └── generate_schema_name.sql
+│
+├── orchestration/
+│   └── dags/
+│       └── brazilian_ecommerce_pipeline.py   ← Airflow DAG
+│
+├── dashboard/
+│   └── looker_studio_setup.md         ← Dashboard config guide
 │
 ├── scripts/
-│   └── setup_gcp.sh                 ← Day 1 setup script
+│   ├── create_pubsub.sh               ← Create Pub/Sub topic + subscription
+│   ├── enable_apis.sh                 ← Enable all required GCP APIs
+│   └── run_dataflow_local.sh          ← Test pipeline locally with DirectRunner
 │
 └── .github/
     └── workflows/
-        ├── dbt_test.yml             ← Run dbt tests on PR
-        └── terraform_plan.yml      ← Terraform plan on push
+        ├── dbt_ci.yml                 ← Run dbt test on every PR
+        └── terraform_plan.yml         ← Terraform plan on every PR
 ```
 
 ---
 
-## 📊 Dataset Overview
+## 📦 Dataset
 
-| Table | Rows | Key Column | Description |
-|-------|------|-----------|-------------|
-| olist_orders_dataset | 99,441 | order_id (PK) | All orders with status and timestamps |
-| olist_customers_dataset | 99,441 | customer_id (PK) | Customer location data |
-| olist_order_items_dataset | 112,650 | order_id (FK) | Line items, price, freight |
-| olist_order_payments_dataset | 103,886 | order_id (FK) | Payment type and installments |
-| olist_order_reviews_dataset | 104,715 | order_id (FK) | Customer review scores |
-| olist_products_dataset | 32,951 | product_id (PK) | Product categories and dimensions |
-| olist_sellers_dataset | 3,095 | seller_id (PK) | Seller location |
-| olist_geolocation_dataset | 1,000,163 | zip_code_prefix | Lat/lng for every zip prefix |
+| Table | Rows | Description |
+|---|---|---|
+| olist_orders_dataset | 99,441 | Master order records with status and timestamps |
+| olist_customers_dataset | 99,441 | Customer location and unique IDs |
+| olist_order_items_dataset | 112,650 | Line items: product, seller, price, freight |
+| olist_order_payments_dataset | 103,886 | Payment type, installments, value |
+| olist_order_reviews_dataset | 104,715 | Review scores and comments |
+| olist_products_dataset | 32,951 | Product metadata and dimensions |
+| olist_sellers_dataset | 3,095 | Seller location |
+| olist_geolocation_dataset | 1,000,163 | Zip code → lat/lng mapping |
+
+**Source:** [Olist Brazilian E-Commerce on Kaggle](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce)
+
+---
+
+## 🎯 KPIs Implemented
+
+| # | KPI | Business Question |
+|---|---|---|
+| 1 | Total Revenue by Product Category | Which categories drive the most revenue? |
+| 2 | Average Review Score by Seller State | Which regions have the best seller performance? |
+| 3 | On-Time Delivery Rate | What % of orders arrive on or before estimated date? |
+| 4 | Average Order Value by Payment Type | Which payment methods correlate with higher spend? |
+| 5 | Monthly Active Customers (MAC) | How is customer engagement trending month-over-month? |
 
 ---
 
 ## 🛠️ Tech Stack
 
 | Layer | Tool | Purpose |
-|-------|------|---------|
-| Cloud Platform | Google Cloud Platform | All infrastructure |
-| Object Storage | Google Cloud Storage | Data lake (raw/staging/processed) |
-| Messaging | Google Cloud Pub/Sub | Event-driven file triggers |
-| Processing | Apache Beam + Dataflow | Distributed transformations |
-| Warehouse | BigQuery | Analytical data warehouse |
-| Modelling | dbt (data build tool) | SQL transformations & testing |
-| Orchestration | Cloud Composer 2 / Airflow 2 | Pipeline scheduling |
-| BI | Looker Studio + BI Engine | Dashboards |
-| IaC | Terraform | GCP resource provisioning |
-| CI/CD | GitHub Actions | Automated testing & deployment |
-| Language | Python 3.11 | Beam pipelines, DAGs, scripts |
+|---|---|---|
+| Infrastructure | Terraform | Provision all GCP resources as code |
+| Storage | Google Cloud Storage | Data lake (raw / staging / processed) |
+| Messaging | Google Cloud Pub/Sub | Event-driven pipeline trigger |
+| Processing | Apache Beam + Dataflow | Distributed data transformation |
+| Warehouse | Google BigQuery | Columnar analytical store |
+| Modelling | dbt (data build tool) | SQL transformation + testing + docs |
+| Orchestration | Cloud Composer (Airflow 2) | Pipeline scheduling and monitoring |
+| BI | Looker Studio + BI Engine | Live interactive dashboards |
+| CI/CD | GitHub Actions | Automated testing and deployment |
+| Language | Python 3.11, SQL | Pipeline + model code |
 
 ---
 
@@ -159,42 +212,75 @@ gcp-brazilian-pipeline/
 - GCP account with billing enabled
 - `gcloud` CLI installed and authenticated
 - Python 3.11+
-- Terraform >= 1.5
+- Terraform 1.6+
 - dbt-bigquery
 
 ### 1. Clone and configure
 ```bash
-git clone https://github.com/YOUR_USERNAME/gcp-brazilian-pipeline.git
-cd gcp-brazilian-pipeline
-cp .env.example .env
-# Edit .env with your GCP project ID
+git clone https://github.com/YOUR_USERNAME/gcp-brazilian-ecommerce-pipeline.git
+cd gcp-brazilian-ecommerce-pipeline
+export PROJECT_ID="your-gcp-project-id"
+export REGION="us-central1"
 ```
 
-### 2. Run Day 1 setup
+### 2. Enable APIs and create infrastructure
 ```bash
-chmod +x scripts/setup_gcp.sh
-./scripts/setup_gcp.sh
+bash scripts/enable_apis.sh
+cd infrastructure/terraform
+cp terraform.tfvars.example terraform.tfvars   # edit with your values
+terraform init && terraform apply
 ```
 
-### 3. Follow the day-by-day guides
-See `docs/DAY1_PROCESS.md` through `docs/DAY7_PROCESS.md`
+### 3. Upload raw data to GCS
+```bash
+bash ingestion/upload_to_gcs.sh
+```
+
+### 4. Run Dataflow transformation
+```bash
+cd transformation/dataflow
+pip install -r requirements.txt
+python pipeline.py --runner DataflowRunner \
+  --project $PROJECT_ID \
+  --region $REGION \
+  --temp_location gs://${PROJECT_ID}-staging/temp
+```
+
+### 5. Run dbt models
+```bash
+cd transformation/dbt
+cp profiles.yml.example ~/.dbt/profiles.yml   # edit with your project
+dbt deps && dbt build
+```
 
 ---
 
-## 📈 KPIs Delivered
+## 📊 Dashboard
 
-- **Order Volume Trends** — daily/weekly/monthly order counts
-- **Revenue by State** — geographic revenue distribution across Brazil
-- **Seller Performance** — GMV, avg review score, on-time delivery rate per seller
-- **Delivery Performance** — actual vs estimated delivery time by region and category
-- **Customer Lifetime Value** — repeat purchase rate, avg order value per customer
-- **Payment Analysis** — credit card vs boleto vs voucher split, installment distribution
-- **Review Score Analysis** — score distribution, correlation with delivery delay
+Live Looker Studio dashboard: **[Add your link after Day 5]**
+
+Report pages:
+- **Order trends** — monthly revenue, order volume, status breakdown
+- **Seller KPIs** — performance by state, review scores, fulfilment rate
+- **Customer map** — geographic distribution of customers by state
+- **Review analysis** — score distribution, delivery correlation
 
 ---
 
-## 👨‍💻 Author
+## 📅 Build Journal
 
-Built as a portfolio data engineering project demonstrating end-to-end GCP pipeline design.
+See [PROCESS_LOG.md](PROCESS_LOG.md) for a detailed day-by-day account of decisions made, issues encountered, and lessons learned throughout the build.
 
-**Skills demonstrated:** GCP · BigQuery · Apache Beam · Dataflow · dbt · Apache Airflow · Cloud Composer · Terraform · GitHub Actions · Python · SQL · Looker Studio
+---
+
+## 👤 Author
+
+**[Your Name]**  
+Data Engineer  
+[LinkedIn](https://linkedin.com/in/yourprofile) · [GitHub](https://github.com/YOUR_USERNAME)
+
+---
+
+## 📄 License
+
+MIT License — see [LICENSE](LICENSE) for details.
