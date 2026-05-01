@@ -1,0 +1,44 @@
+[
+  {
+    "name": "review_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Unique identifier for each review"
+  },
+  {
+    "name": "order_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Foreign key to olist_orders_dataset"
+  },
+  {
+    "name": "review_score",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Raw string load — contains unescaped commas in comment fields that shift columns. Cast to INT64 after cleaning in SQL. See: ingestion/fix_reviews_load.sql"
+  },
+  {
+    "name": "review_comment_title",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Review headline (Portuguese). May contain shifted column data — validate after load."
+  },
+  {
+    "name": "review_comment_message",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Full review text (Portuguese). Unescaped commas here cause column shifting — root cause of load errors."
+  },
+  {
+    "name": "review_creation_date",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Raw string — cast to TIMESTAMP in fix_reviews_load.sql after filtering malformed rows."
+  },
+  {
+    "name": "review_answer_timestamp",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Raw string — cast to TIMESTAMP in fix_reviews_load.sql after filtering malformed rows."
+  }
+]

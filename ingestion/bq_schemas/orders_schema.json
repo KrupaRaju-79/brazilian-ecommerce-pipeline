@@ -1,0 +1,50 @@
+[
+  {
+    "name": "order_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Unique identifier for each order (32-char hex hash)"
+  },
+  {
+    "name": "customer_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Foreign key to olist_customers_dataset. Each order has one customer."
+  },
+  {
+    "name": "order_status",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Order status: delivered, shipped, processing, canceled, unavailable, invoiced, created, approved"
+  },
+  {
+    "name": "order_purchase_timestamp",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE",
+    "description": "Timestamp when the customer placed the order"
+  },
+  {
+    "name": "order_approved_at",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE",
+    "description": "Timestamp when payment was approved"
+  },
+  {
+    "name": "order_delivered_carrier_date",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE",
+    "description": "Timestamp when the order was handed to the logistics carrier"
+  },
+  {
+    "name": "order_delivered_customer_date",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE",
+    "description": "Timestamp when the customer actually received the order"
+  },
+  {
+    "name": "order_estimated_delivery_date",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE",
+    "description": "Estimated delivery date communicated to customer at purchase"
+  }
+]

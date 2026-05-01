@@ -1,0 +1,53 @@
+name: dbt CI — Test on PR
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'transformation/dbt/**'
+
+jobs:
+  dbt-test:
+    name: Run dbt tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dbt-bigquery
+        run: pip install dbt-bigquery==1.7.0
+
+      - name: Write dbt profiles from GitHub Secret
+        run: |
+          mkdir -p ~/.dbt
+          echo "${{ secrets.DBT_PROFILES_YML }}" > ~/.dbt/profiles.yml
+
+      - name: Write GCP service account key
+        run: |
+          mkdir -p credentials
+          echo "${{ secrets.GCP_SA_KEY }}" > credentials/pipeline-sa-key.json
+
+      - name: dbt deps
+        working-directory: transformation/dbt
+        run: dbt deps
+
+      - name: dbt debug (verify connection)
+        working-directory: transformation/dbt
+        run: dbt debug
+
+      - name: dbt test
+        working-directory: transformation/dbt
+        run: dbt test --target prod
+
+      - name: Upload dbt test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-test-results
+          path: transformation/dbt/target/

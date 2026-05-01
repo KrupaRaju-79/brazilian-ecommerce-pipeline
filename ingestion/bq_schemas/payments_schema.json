@@ -1,0 +1,7 @@
+[
+  {"name": "order_id", "type": "STRING", "mode": "REQUIRED", "description": "Foreign key to orders"},
+  {"name": "payment_sequential", "type": "INTEGER", "mode": "NULLABLE", "description": "Payment sequence number (for multiple payment methods on one order)"},
+  {"name": "payment_type", "type": "STRING", "mode": "NULLABLE", "description": "Payment method: credit_card, boleto, voucher, debit_card"},
+  {"name": "payment_installments", "type": "INTEGER", "mode": "NULLABLE", "description": "Number of installments chosen by customer"},
+  {"name": "payment_value", "type": "FLOAT64", "mode": "NULLABLE", "description": "Transaction value in BRL"}
+]

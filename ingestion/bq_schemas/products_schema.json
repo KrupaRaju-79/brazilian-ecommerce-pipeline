@@ -1,0 +1,11 @@
+[
+  {"name": "product_id", "type": "STRING", "mode": "REQUIRED", "description": "Unique product identifier"},
+  {"name": "product_category_name", "type": "STRING", "mode": "NULLABLE", "description": "Product category in Portuguese"},
+  {"name": "product_name_length", "type": "INTEGER", "mode": "NULLABLE", "description": "Number of characters in product name"},
+  {"name": "product_description_length", "type": "INTEGER", "mode": "NULLABLE", "description": "Number of characters in product description"},
+  {"name": "product_photos_qty", "type": "INTEGER", "mode": "NULLABLE", "description": "Number of photos in the product listing"},
+  {"name": "product_weight_g", "type": "FLOAT64", "mode": "NULLABLE", "description": "Product weight in grams"},
+  {"name": "product_length_cm", "type": "FLOAT64", "mode": "NULLABLE", "description": "Product length in centimeters"},
+  {"name": "product_height_cm", "type": "FLOAT64", "mode": "NULLABLE", "description": "Product height in centimeters"},
+  {"name": "product_width_cm", "type": "FLOAT64", "mode": "NULLABLE", "description": "Product width in centimeters"}
+]

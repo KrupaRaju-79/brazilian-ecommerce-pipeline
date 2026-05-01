@@ -1,0 +1,7 @@
+[
+  {"name": "customer_id", "type": "STRING", "mode": "REQUIRED", "description": "Foreign key to orders. Key to the orders dataset."},
+  {"name": "customer_unique_id", "type": "STRING", "mode": "NULLABLE", "description": "Unique identifier per customer. One customer can have multiple customer_ids across orders."},
+  {"name": "customer_zip_code_prefix", "type": "STRING", "mode": "NULLABLE", "description": "First 5 digits of customer zip code"},
+  {"name": "customer_city", "type": "STRING", "mode": "NULLABLE", "description": "Customer city name"},
+  {"name": "customer_state", "type": "STRING", "mode": "NULLABLE", "description": "2-letter Brazilian state code"}
+]

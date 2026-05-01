@@ -1,0 +1,6 @@
+[
+  {"name": "seller_id", "type": "STRING", "mode": "REQUIRED", "description": "Unique seller identifier"},
+  {"name": "seller_zip_code_prefix", "type": "STRING", "mode": "NULLABLE", "description": "First 5 digits of seller zip code"},
+  {"name": "seller_city", "type": "STRING", "mode": "NULLABLE", "description": "Seller city name"},
+  {"name": "seller_state", "type": "STRING", "mode": "NULLABLE", "description": "2-letter Brazilian state code"}
+]

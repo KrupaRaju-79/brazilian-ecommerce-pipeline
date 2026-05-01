@@ -1,0 +1,9 @@
+[
+  {"name": "order_id", "type": "STRING", "mode": "REQUIRED", "description": "Foreign key to orders"},
+  {"name": "order_item_id", "type": "INTEGER", "mode": "NULLABLE", "description": "Sequential item number within the order (1, 2, 3...)"},
+  {"name": "product_id", "type": "STRING", "mode": "NULLABLE", "description": "Foreign key to products"},
+  {"name": "seller_id", "type": "STRING", "mode": "NULLABLE", "description": "Foreign key to sellers"},
+  {"name": "shipping_limit_date", "type": "TIMESTAMP", "mode": "NULLABLE", "description": "Seller must ship by this date"},
+  {"name": "price", "type": "FLOAT64", "mode": "NULLABLE", "description": "Item price in BRL"},
+  {"name": "freight_value", "type": "FLOAT64", "mode": "NULLABLE", "description": "Freight cost for this item in BRL"}
+]
