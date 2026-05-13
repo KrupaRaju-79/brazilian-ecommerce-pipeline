@@ -135,27 +135,28 @@ def write_to_bq(pcollection, label, project, dataset, table, schema, temp_locati
 
 def run(argv=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--project',        required=True,
-                        help='GCP Project ID')
+    # Our custom args — everything else goes to PipelineOptions
     parser.add_argument('--input_bucket',   required=True,
                         help='GCS bucket name containing raw/ CSVs')
     parser.add_argument('--output_dataset', default='staging',
                         help='Target BigQuery dataset (default: staging)')
-    parser.add_argument('--temp_location',  required=True,
-                        help='GCS path for temp files e.g. gs://BUCKET/tmp')
-    parser.add_argument('--job_name',       default='brazilian-ecommerce-transform',
-                        help='Dataflow job name')
 
     known_args, pipeline_args = parser.parse_known_args(argv)
 
+    # Pass ALL remaining args (including --project, --runner, --region,
+    # --temp_location, --job_name) directly to PipelineOptions so Beam
+    # and Dataflow can read them natively. This fixes the
+    # "Missing required option: project" error on DataflowRunner.
     options = PipelineOptions(pipeline_args)
-    # Save the main session so DoFns can access globals when running on Dataflow
     options.view_as(SetupOptions).save_main_session = True
 
-    PROJECT  = known_args.project
-    BUCKET   = known_args.input_bucket
-    DATASET  = known_args.output_dataset
-    TEMP_LOC = known_args.temp_location
+    # Read project and temp_location from PipelineOptions (where Beam expects them)
+    from apache_beam.options.pipeline_options import GoogleCloudOptions, WorkerOptions
+    gcp_options  = options.view_as(GoogleCloudOptions)
+    PROJECT      = gcp_options.project
+    TEMP_LOC     = gcp_options.temp_location
+    BUCKET       = known_args.input_bucket
+    DATASET      = known_args.output_dataset
 
     def gcs(filename):
         return f'gs://{BUCKET}/raw/{filename}'
