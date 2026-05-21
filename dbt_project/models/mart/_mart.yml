@@ -1,0 +1,79 @@
+version: 2
+
+models:
+  - name: mart_order_kpis
+    description: >
+      Monthly order KPIs aggregated at month grain.
+      Primary source for Looker Studio Page 1 — Order trends dashboard.
+      Includes GMV, AOV, order count, delivery performance, and payment behaviour.
+    columns:
+      - name: order_month
+        description: "YYYY-MM string for grouping (e.g. 2018-01)"
+        tests: [not_null, unique]
+      - name: total_orders
+        description: "Count of delivered orders in this month"
+        tests: [not_null]
+      - name: gmv_brl
+        description: "Gross Merchandise Value in BRL — sum of item prices"
+        tests: [not_null]
+      - name: aov_brl
+        description: "Average Order Value in BRL"
+      - name: late_delivery_pct
+        description: "Percentage of orders that arrived after the estimated date"
+
+  - name: mart_seller_performance
+    description: >
+      One row per seller with lifetime revenue, order count, delivery stats,
+      and a performance tier (Bronze / Silver / Gold / Platinum).
+      Powers Looker Studio Page 2 — Seller KPIs.
+    columns:
+      - name: seller_id
+        description: "Unique seller identifier"
+        tests: [not_null, unique]
+      - name: total_revenue_brl
+        description: "Total item revenue earned by this seller"
+        tests: [not_null]
+      - name: seller_tier
+        description: "Performance tier based on revenue"
+        tests:
+          - accepted_values:
+              values: ['Bronze', 'Silver', 'Gold', 'Platinum']
+
+  - name: mart_delivery_performance
+    description: >
+      Delivery performance broken down by Brazilian state.
+      Includes late %, average delay, and a delivery grade.
+      Powers Looker Studio Page 4.
+    columns:
+      - name: customer_state
+        description: "2-letter Brazilian state code"
+        tests: [not_null, unique]
+      - name: delivery_grade
+        description: "Performance grade based on late delivery percentage"
+        tests:
+          - accepted_values:
+              values: ['Excellent', 'Good', 'Needs Improvement', 'Poor']
+
+  - name: mart_geo_sales
+    description: >
+      Revenue and order volume by Brazilian state with lat/lng coordinates.
+      Powers the geographic heat map on Looker Studio Page 3.
+    columns:
+      - name: state
+        description: "2-letter Brazilian state code"
+        tests: [not_null, unique]
+      - name: total_gmv_brl
+        description: "Total GMV for this state"
+        tests: [not_null]
+
+  - name: mart_payment_analysis
+    description: >
+      Monthly payment method breakdown with instalment behaviour analysis.
+      Brazil-specific insight — credit card instalment culture up to 24x.
+    columns:
+      - name: payment_type
+        description: "Normalised payment method label"
+        tests: [not_null]
+      - name: order_month
+        description: "YYYY-MM month string"
+        tests: [not_null]

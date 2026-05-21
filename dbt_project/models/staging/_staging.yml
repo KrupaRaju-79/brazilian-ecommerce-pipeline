@@ -1,0 +1,73 @@
+version: 2
+
+models:
+  - name: stg_orders
+    description: "Cleaned orders with typed timestamps, derived date parts, delivery delay and customer geography"
+    columns:
+      - name: order_id
+        description: "Unique identifier for each order"
+        tests: [not_null, unique]
+      - name: customer_id
+        description: "Order-scoped customer identifier"
+        tests: [not_null]
+      - name: order_status
+        description: "Current status of the order"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['delivered', 'shipped', 'canceled', 'invoiced',
+                       'processing', 'unavailable', 'created', 'approved']
+      - name: delivery_delay_days
+        description: "Actual delivery minus estimated delivery in days. Negative = early, positive = late"
+      - name: is_late_delivery
+        description: "True if order arrived after estimated delivery date"
+      - name: customer_state
+        description: "2-letter Brazilian state code of the customer"
+
+  - name: stg_order_items
+    description: "Order line items with seller geography, English category name, and total_item_value"
+    columns:
+      - name: order_id
+        description: "Foreign key to stg_orders"
+        tests: [not_null]
+      - name: product_id
+        description: "Foreign key to product catalog"
+        tests: [not_null]
+      - name: seller_id
+        description: "Foreign key to seller"
+        tests: [not_null]
+      - name: price
+        description: "Item price in BRL"
+        tests: [not_null]
+      - name: total_item_value
+        description: "price + freight_value for this line item"
+      - name: category_display
+        description: "English category name when available, else Portuguese"
+
+  - name: stg_payments
+    description: "Payment records with normalised payment_type labels and instalment flag"
+    columns:
+      - name: order_id
+        description: "Foreign key to stg_orders"
+        tests: [not_null]
+      - name: payment_type
+        description: "Normalised payment method label"
+        tests:
+          - accepted_values:
+              values: ['Credit Card', 'Boleto', 'Voucher', 'Debit Card', 'Unknown']
+      - name: payment_value
+        description: "Amount paid via this payment method in BRL"
+        tests: [not_null]
+
+  - name: stg_geolocation
+    description: "One row per ZIP code with averaged lat/lng coordinates"
+    columns:
+      - name: zip_code_prefix
+        description: "5-digit Brazilian ZIP code prefix"
+        tests: [not_null, unique]
+      - name: latitude
+        description: "Average latitude for this ZIP"
+        tests: [not_null]
+      - name: longitude
+        description: "Average longitude for this ZIP"
+        tests: [not_null]

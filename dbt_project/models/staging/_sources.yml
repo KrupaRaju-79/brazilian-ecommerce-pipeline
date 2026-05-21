@@ -1,0 +1,42 @@
+version: 2
+
+sources:
+  - name: staging
+    description: "Tables written by the Apache Beam Dataflow pipeline"
+    database: project-d251f75f-1a3c-44ee-82e
+    schema: staging
+
+    tables:
+      - name: orders_enriched
+        description: "Orders with delivery delay and customer geography added by Beam"
+        columns:
+          - name: order_id
+            tests: [not_null, unique]
+          - name: customer_id
+            tests: [not_null]
+          - name: order_status
+            tests: [not_null]
+
+      - name: order_items_enriched
+        description: "Order line items with seller state and English category name added by Beam"
+        columns:
+          - name: order_id
+            tests: [not_null]
+          - name: product_id
+            tests: [not_null]
+          - name: seller_id
+            tests: [not_null]
+
+      - name: payments
+        description: "Payment records — multiple rows per order when split payments used"
+        columns:
+          - name: order_id
+            tests: [not_null]
+          - name: payment_value
+            tests: [not_null]
+
+      - name: geolocation_deduped
+        description: "ZIP codes deduplicated to one row per ZIP with averaged lat/lng"
+        columns:
+          - name: zip_code_prefix
+            tests: [not_null, unique]

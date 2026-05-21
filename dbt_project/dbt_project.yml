@@ -1,0 +1,26 @@
+name: 'brazilian_ecommerce'
+version: '1.0.0'
+config-version: 2
+
+profile: 'brazilian_ecommerce'
+
+model-paths: ["models"]
+test-paths:  ["tests"]
+macro-paths: ["macros"]
+seed-paths:  ["seeds"]
+
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  brazilian_ecommerce:
+    staging:
+      +schema:       staging
+      +materialized: view
+      +docs:
+        node_color: "#2E75B6"
+    mart:
+      +schema:       mart
+      +materialized: table
+      +docs:
+        node_color: "#1E6B3C"
