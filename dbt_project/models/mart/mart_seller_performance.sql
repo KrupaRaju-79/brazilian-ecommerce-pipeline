@@ -1,6 +1,6 @@
 -- =============================================================================
 -- models/mart/mart_seller_performance.sql
--- One row per seller with revenue, order count, avg review score
+-- One row per seller with revenue, order count, delivery stats, performance tier
 -- Powers: Looker Studio Page 2 (Seller KPIs)
 -- =============================================================================
 
@@ -17,7 +17,7 @@ items as (
 
 ),
 
--- join orders to items to get seller + order context
+-- join orders to items
 order_items_joined as (
 
     select
@@ -35,6 +35,28 @@ order_items_joined as (
 
     from items i
     inner join orders o using (order_id)
+
+),
+
+-- get top category per seller separately
+top_category_per_seller as (
+
+    select
+        seller_id,
+        category_display as top_category
+    from (
+        select
+            seller_id,
+            category_display,
+            count(*) as item_count,
+            row_number() over (
+                partition by seller_id
+                order by count(*) desc
+            ) as rn
+        from order_items_joined
+        group by seller_id, category_display
+    )
+    where rn = 1
 
 ),
 
@@ -65,13 +87,6 @@ seller_agg as (
             ) * 100, 1
         )                                     as late_delivery_pct,
 
-        -- top category (most revenue)
-        ( select category_display
-          from unnest(array_agg(
-              struct(total_item_value as val, category_display as cat)
-              order by val desc limit 1))
-        )                                     as top_category,
-
         -- active months
         count(distinct order_month)           as active_months
 
@@ -81,27 +96,28 @@ seller_agg as (
 )
 
 select
-    seller_id,
-    seller_state,
-    seller_city,
-    total_orders,
-    total_items_sold,
-    total_revenue_brl,
-    avg_item_price_brl,
-    total_gmv_brl,
-    avg_delivery_delay_days,
-    late_deliveries,
-    late_delivery_pct,
-    top_category,
-    active_months,
+    s.seller_id,
+    s.seller_state,
+    s.seller_city,
+    s.total_orders,
+    s.total_items_sold,
+    s.total_revenue_brl,
+    s.avg_item_price_brl,
+    s.total_gmv_brl,
+    s.avg_delivery_delay_days,
+    s.late_deliveries,
+    s.late_delivery_pct,
+    t.top_category,
+    s.active_months,
 
     -- performance tier based on revenue
     case
-        when total_revenue_brl >= 50000 then 'Platinum'
-        when total_revenue_brl >= 10000 then 'Gold'
-        when total_revenue_brl >= 1000  then 'Silver'
+        when s.total_revenue_brl >= 50000 then 'Platinum'
+        when s.total_revenue_brl >= 10000 then 'Gold'
+        when s.total_revenue_brl >= 1000  then 'Silver'
         else 'Bronze'
     end as seller_tier
 
-from seller_agg
-order by total_revenue_brl desc
+from seller_agg s
+left join top_category_per_seller t using (seller_id)
+order by s.total_revenue_brl desc

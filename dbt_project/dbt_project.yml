@@ -15,12 +15,12 @@ clean-targets: ["target", "dbt_packages"]
 models:
   brazilian_ecommerce:
     staging:
-      +schema:       staging
+      +schema:       staging      # writes to BigQuery dataset: staging
       +materialized: view
       +docs:
         node_color: "#2E75B6"
     mart:
-      +schema:       mart
+      +schema:       mart         # writes to BigQuery dataset: mart
       +materialized: table
       +docs:
         node_color: "#1E6B3C"
