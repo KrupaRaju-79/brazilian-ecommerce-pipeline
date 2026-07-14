@@ -275,7 +275,7 @@ See [PROCESS_LOG.md](PROCESS_LOG.md) for a detailed day-by-day account of decisi
 
 ## 👤 Author
 
-**[Your Name]**  
+**Krupa Raju Achchana**  
 Data Engineer  
 [LinkedIn](https://linkedin.com/in/yourprofile) · [GitHub](https://github.com/YOUR_USERNAME)
 
